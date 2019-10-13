@@ -112,15 +112,18 @@
 //GUID_DEVINTERFACE_* values
 #include <uuids.h>
 
+//For now is a global viable
+//TODO once the classes are reestructured should be an attribute of a class
+PBTH_LE_GATT_SERVICE pServiceBuffer;
 
 //Determining the Services Buffer Size
 //Based in the example provided by Microsoft at the oficial API
 //https://docs.microsoft.com/en-us/windows/win32/api/bluetoothleapis/nf-bluetoothleapis-bluetoothgattgetservices
-HRESULT GetGattServices(HANDLE handle) {
+HRESULT GetBLEGattServices(HANDLE service_handle) {
   
   USHORT serviceBufferCount;
   HRESULT result = BluetoothGATTGetServices(
-    handle,
+    service_handle,
     0,
     NULL,
     &serviceBufferCount,
@@ -133,7 +136,8 @@ HRESULT GetGattServices(HANDLE handle) {
     return result;
   }
 
-  PBTH_LE_GATT_SERVICE pServiceBuffer;
+  //Made a global as we need it to get the characteristics
+  //PBTH_LE_GATT_SERVICE pServiceBuffer;
   pServiceBuffer = (PBTH_LE_GATT_SERVICE)malloc(sizeof(BTH_LE_GATT_SERVICE) * serviceBufferCount);
   if (nullptr == pServiceBuffer) {
     //Error no more memory
@@ -143,13 +147,63 @@ HRESULT GetGattServices(HANDLE handle) {
   memset(pServiceBuffer, '0', sizeof(BTH_LE_GATT_SERVICE) * serviceBufferCount);
 
   //We retrieve the service
+  USHORT num_services;
   result = BluetoothGATTGetServices(
-    handle,
+    service_handle,
     serviceBufferCount,
     pServiceBuffer,
-    &serviceBufferCount,
+    &num_services,
     BLUETOOTH_GATT_FLAG_NONE
   );
+  return result;
+}
+
+//Get the characteristics of a device
+//Similar to get services, an example can alos be found at the oficial API
+//https://docs.microsoft.com/en-us/windows/win32/api/bluetoothleapis/nf-bluetoothleapis-bluetoothgattgetcharacteristics
+HRESULT GetBLECharacteristics(HANDLE service_handle) {
+  USHORT charBufferSize;
+
+  HRESULT result = BluetoothGATTGetCharacteristics(
+    service_handle,
+    pServiceBuffer,
+    0,
+    NULL,
+    &charBufferSize,
+    BLUETOOTH_GATT_FLAG_NONE
+  );
+
+  if (HRESULT_FROM_WIN32(ERROR_MORE_DATA) != result) {
+    //Error
+    return result;
+  }
+
+  PBTH_LE_GATT_CHARACTERISTIC pCharacteristicsBuffer;
+  if (charBufferSize > 0) {
+    pCharacteristicsBuffer = (PBTH_LE_GATT_CHARACTERISTIC)malloc(sizeof(PBTH_LE_GATT_CHARACTERISTIC)*charBufferSize);
+  }
+  if (nullptr == pCharacteristicsBuffer) {
+    //Error no more memory
+    return result;
+  }
+
+  //We set the initial value of the buffer to 0
+  memset(pCharacteristicsBuffer, 0, sizeof(PBTH_LE_GATT_CHARACTERISTIC) * charBufferSize);
+
+  //We retrieve the characteristics
+  USHORT num_characteristics;
+  result = BluetoothGATTGetCharacteristics(
+    service_handle,
+    pServiceBuffer,
+    charBufferSize,
+    pCharacteristicsBuffer,
+    &num_characteristics,
+    BLUETOOTH_GATT_FLAG_NONE
+  );
+
+  if (num_characteristics != charBufferSize) {
+    //Missmatch between buffer size and actual buffer size
+  }
   return result;
 }
 
@@ -218,9 +272,11 @@ int ScanBLEDevices()
         &RequiredSize,
         &deviceInfoData
       );
-      std::cout << "Path: " << pDevIntDetData->DevicePath << std::endl;
       
-      deviceHandle = CreateFile(pDevIntDetData->DevicePath, GENERIC_WRITE | GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+      std::cout << "Path: " << pDevIntDetData->DevicePath << std::endl;
+      //TODO create a function that returns this device Paths so a user could choose which one he desires to use to make a Handle
+      //The path can be used to create a handle which is what we need to access the services and all the other info from the GATT
+      //deviceHandle = CreateFile(pDevIntDetData->DevicePath, GENERIC_WRITE | GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
     }
 
     bool hasError = false;

@@ -30,7 +30,7 @@ solution "BluetoothImplementations"
 		}
 		
 		configuration "windows"
-		  links { "opengl32", "user32", "gdi32", "shell32", "Ws2_32", "Setupapi" }
+		  links { "opengl32", "user32", "gdi32", "shell32", "Ws2_32", "Setupapi", "Bthprops", "BluetoothApis" }
 		  --Soloud defines for windows
 		  --defines {"WITH_WINMM", "WITH_WASAPI" }
 		  
