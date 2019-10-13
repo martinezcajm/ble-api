@@ -116,6 +116,10 @@
 //TODO once the classes are reestructured should be an attribute of a class
 PBTH_LE_GATT_SERVICE pServiceBuffer;
 
+//For now is a global viable
+//TODO once the classes are reestructured should be an attribute of a class
+PBTH_LE_GATT_CHARACTERISTIC pCharacteristicsBuffer;
+
 //Determining the Services Buffer Size
 //Based in the example provided by Microsoft at the oficial API
 //https://docs.microsoft.com/en-us/windows/win32/api/bluetoothleapis/nf-bluetoothleapis-bluetoothgattgetservices
@@ -144,7 +148,7 @@ HRESULT GetBLEGattServices(HANDLE service_handle) {
     return result;
   }
   //We set the initial value of the buffer to 0
-  memset(pServiceBuffer, '0', sizeof(BTH_LE_GATT_SERVICE) * serviceBufferCount);
+  memset(pServiceBuffer, 0, sizeof(BTH_LE_GATT_SERVICE) * serviceBufferCount);
 
   //We retrieve the service
   USHORT num_services;
@@ -155,6 +159,10 @@ HRESULT GetBLEGattServices(HANDLE service_handle) {
     &num_services,
     BLUETOOTH_GATT_FLAG_NONE
   );
+
+  if (num_services != serviceBufferCount) {
+    //Missmatch between buffer size and actual buffer size
+  }
   return result;
 }
 
@@ -178,7 +186,8 @@ HRESULT GetBLECharacteristics(HANDLE service_handle) {
     return result;
   }
 
-  PBTH_LE_GATT_CHARACTERISTIC pCharacteristicsBuffer;
+  //Made a global as we need it to get the characteristics
+  //PBTH_LE_GATT_CHARACTERISTIC pCharacteristicsBuffer;
   if (charBufferSize > 0) {
     pCharacteristicsBuffer = (PBTH_LE_GATT_CHARACTERISTIC)malloc(sizeof(PBTH_LE_GATT_CHARACTERISTIC)*charBufferSize);
   }
@@ -202,6 +211,55 @@ HRESULT GetBLECharacteristics(HANDLE service_handle) {
   );
 
   if (num_characteristics != charBufferSize) {
+    //Missmatch between buffer size and actual buffer size
+  }
+  return result;
+}
+
+//Get the descriptors of a characteristic
+//Similar to get services, an example can alos be found at the oficial API
+//https://docs.microsoft.com/en-us/windows/win32/api/bluetoothleapis/nf-bluetoothleapis-bluetoothgattgetdescriptors
+HRESULT GetBLEDescriptors(HANDLE service_handle) {
+
+  USHORT descriptorBufferSize;
+  HRESULT result = BluetoothGATTGetDescriptors(
+    service_handle,
+    pCharacteristicsBuffer,
+    0,
+    NULL,
+    &descriptorBufferSize,
+    BLUETOOTH_GATT_FLAG_NONE
+  );
+
+  if (HRESULT_FROM_WIN32(ERROR_MORE_DATA) != result) {
+    //Error
+    return result;
+  }
+
+  PBTH_LE_GATT_DESCRIPTOR pDescriptorBuffer;
+
+  if (descriptorBufferSize > 0) {
+    pDescriptorBuffer = (PBTH_LE_GATT_DESCRIPTOR)malloc(sizeof(PBTH_LE_GATT_DESCRIPTOR)*descriptorBufferSize);
+  }
+  if (nullptr == pCharacteristicsBuffer) {
+    //Error no more memory
+    return result;
+  }
+
+  //We set the initial value of the buffer to 0
+  memset(pDescriptorBuffer, 0, sizeof(PBTH_LE_GATT_DESCRIPTOR) * descriptorBufferSize);
+
+  //We retrieve the descriptors
+  USHORT num_descriptors;
+  result = BluetoothGATTGetDescriptors(
+    service_handle,
+    pCharacteristicsBuffer,
+    descriptorBufferSize,
+    pDescriptorBuffer,
+    &num_descriptors,
+    BLUETOOTH_GATT_FLAG_NONE
+  );
+  if (num_descriptors != descriptorBufferSize) {
     //Missmatch between buffer size and actual buffer size
   }
   return result;
