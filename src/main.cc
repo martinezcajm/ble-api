@@ -151,7 +151,7 @@ HRESULT GetBLEGattServices(HANDLE service_handle) {
   memset(pServiceBuffer, 0, sizeof(BTH_LE_GATT_SERVICE) * serviceBufferCount);
 
   //We retrieve the service
-  USHORT num_services;
+  USHORT num_services = 0;
   result = BluetoothGATTGetServices(
     service_handle,
     serviceBufferCount,
@@ -163,6 +163,7 @@ HRESULT GetBLEGattServices(HANDLE service_handle) {
   if (num_services != serviceBufferCount) {
     //Missmatch between buffer size and actual buffer size
   }
+
   return result;
 }
 
@@ -189,7 +190,7 @@ HRESULT GetBLECharacteristics(HANDLE service_handle) {
   //Made a global as we need it to get the characteristics
   //PBTH_LE_GATT_CHARACTERISTIC pCharacteristicsBuffer;
   if (charBufferSize > 0) {
-    pCharacteristicsBuffer = (PBTH_LE_GATT_CHARACTERISTIC)malloc(sizeof(PBTH_LE_GATT_CHARACTERISTIC)*charBufferSize);
+    pCharacteristicsBuffer = (PBTH_LE_GATT_CHARACTERISTIC)malloc(sizeof(BTH_LE_GATT_CHARACTERISTIC)*charBufferSize);
   }
   if (nullptr == pCharacteristicsBuffer) {
     //Error no more memory
@@ -197,10 +198,10 @@ HRESULT GetBLECharacteristics(HANDLE service_handle) {
   }
 
   //We set the initial value of the buffer to 0
-  memset(pCharacteristicsBuffer, 0, sizeof(PBTH_LE_GATT_CHARACTERISTIC) * charBufferSize);
+  memset(pCharacteristicsBuffer, 0, sizeof(BTH_LE_GATT_CHARACTERISTIC) * charBufferSize);
 
   //We retrieve the characteristics
-  USHORT num_characteristics;
+  USHORT num_characteristics = 0;
   result = BluetoothGATTGetCharacteristics(
     service_handle,
     pServiceBuffer,
@@ -239,7 +240,7 @@ HRESULT GetBLEDescriptors(HANDLE service_handle) {
   PBTH_LE_GATT_DESCRIPTOR pDescriptorBuffer;
 
   if (descriptorBufferSize > 0) {
-    pDescriptorBuffer = (PBTH_LE_GATT_DESCRIPTOR)malloc(sizeof(PBTH_LE_GATT_DESCRIPTOR)*descriptorBufferSize);
+    pDescriptorBuffer = (PBTH_LE_GATT_DESCRIPTOR)malloc(sizeof(BTH_LE_GATT_DESCRIPTOR)*descriptorBufferSize);
   }
   if (nullptr == pCharacteristicsBuffer) {
     //Error no more memory
@@ -247,7 +248,7 @@ HRESULT GetBLEDescriptors(HANDLE service_handle) {
   }
 
   //We set the initial value of the buffer to 0
-  memset(pDescriptorBuffer, 0, sizeof(PBTH_LE_GATT_DESCRIPTOR) * descriptorBufferSize);
+  memset(pDescriptorBuffer, 0, sizeof(BTH_LE_GATT_DESCRIPTOR) * descriptorBufferSize);
 
   //We retrieve the descriptors
   USHORT num_descriptors;
@@ -271,6 +272,8 @@ int ScanBLEDevices()
   static /*const*/ GUID GUID_DEVINTERFACE_USB_DEVICE =
   { 0xA5DCBF10L, 0x6530, 0x11D2,{ 0x90, 0x1F, 0x00, 0xC0, 0x4F, 0xB9, 0x51, 0xED } };
   
+  CHAR* path;
+
   HDEVINFO hDI;
   SP_DEVINFO_DATA deviceInfoData;
   DWORD memberIndex = 0;
@@ -330,7 +333,7 @@ int ScanBLEDevices()
         &RequiredSize,
         &deviceInfoData
       );
-      
+      path = pDevIntDetData->DevicePath;
       std::cout << "Path: " << pDevIntDetData->DevicePath << std::endl;
       //TODO create a function that returns this device Paths so a user could choose which one he desires to use to make a Handle
       //The path can be used to create a handle which is what we need to access the services and all the other info from the GATT
@@ -456,7 +459,14 @@ int ScanBLEDevices()
   //Microsoft API
   //The caller of SetupDiGetClassDevs must delete the returned device information set when it is no longer needed 
   SetupDiDestroyDeviceInfoList(hDI);
-
+  HANDLE myHandle = CreateFile(path, GENERIC_WRITE | GENERIC_READ, NULL, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+  if (myHandle == INVALID_HANDLE_VALUE) {
+    //Error
+    return -1;
+  }
+  GetBLEGattServices(myHandle);
+  GetBLECharacteristics(myHandle);
+  GetBLEDescriptors(myHandle);
   return 0;
 }
 
