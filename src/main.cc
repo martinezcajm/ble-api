@@ -140,6 +140,7 @@ HRESULT GetBLEGattServices(HANDLE service_handle) {
     return result;
   }
 
+  std::cout << "The device has  " << serviceBufferCount << " Services."<< std::endl;
   //Made a global as we need it to get the characteristics
   //PBTH_LE_GATT_SERVICE pServiceBuffer;
   pServiceBuffer = (PBTH_LE_GATT_SERVICE)malloc(sizeof(BTH_LE_GATT_SERVICE) * serviceBufferCount);
@@ -162,6 +163,14 @@ HRESULT GetBLEGattServices(HANDLE service_handle) {
 
   if (num_services != serviceBufferCount) {
     //Missmatch between buffer size and actual buffer size
+  }
+
+  for (USHORT i = 0; i < num_services; i++) {
+    GUID guid = (pServiceBuffer + i)->ServiceUuid.Value.LongUuid;
+
+    OLECHAR* guidString;
+    StringFromCLSID(guid, &guidString);
+    std::cout << " Service " << i << ": Service Short UUID(" << (pServiceBuffer + i)->ServiceUuid.Value.ShortUuid <<") Service Long UUID(" << guidString << ") with attribute handle " << (pServiceBuffer + i)->AttributeHandle << std::endl;
   }
 
   return result;
@@ -190,6 +199,7 @@ HRESULT GetBLECharacteristics(HANDLE service_handle) {
   //Made a global as we need it to get the characteristics
   //PBTH_LE_GATT_CHARACTERISTIC pCharacteristicsBuffer;
   if (charBufferSize > 0) {
+    std::cout << "The device has  " << charBufferSize << " Characteristics." << std::endl;
     pCharacteristicsBuffer = (PBTH_LE_GATT_CHARACTERISTIC)malloc(sizeof(BTH_LE_GATT_CHARACTERISTIC)*charBufferSize);
   }
   if (nullptr == pCharacteristicsBuffer) {
@@ -211,6 +221,15 @@ HRESULT GetBLECharacteristics(HANDLE service_handle) {
     BLUETOOTH_GATT_FLAG_NONE
   );
 
+  for (USHORT i = 0; i < charBufferSize; i++) {
+    GUID guid = (pCharacteristicsBuffer + i)->CharacteristicUuid.Value.LongUuid;
+
+    OLECHAR* guidString;
+    StringFromCLSID(guid, &guidString);
+    std::cout << " Characteristic " << i << ": Characteristic Short UUID(" << (pCharacteristicsBuffer + i)->CharacteristicUuid.Value.ShortUuid << ") Characteristic Long UUID(" << guidString << ") with attribute handle "
+      << (pCharacteristicsBuffer + i)->AttributeHandle << " from service: " << (pCharacteristicsBuffer + i)->ServiceHandle << std::endl;
+  }
+
   if (num_characteristics != charBufferSize) {
     //Missmatch between buffer size and actual buffer size
   }
@@ -223,9 +242,11 @@ HRESULT GetBLECharacteristics(HANDLE service_handle) {
 HRESULT GetBLEDescriptors(HANDLE service_handle) {
 
   USHORT descriptorBufferSize;
+  PBTH_LE_GATT_CHARACTERISTIC currGattChar;
+  currGattChar = &pCharacteristicsBuffer[2];
   HRESULT result = BluetoothGATTGetDescriptors(
     service_handle,
-    pCharacteristicsBuffer,
+    currGattChar,
     0,
     NULL,
     &descriptorBufferSize,
@@ -460,10 +481,13 @@ int ScanBLEDevices()
   //The caller of SetupDiGetClassDevs must delete the returned device information set when it is no longer needed 
   SetupDiDestroyDeviceInfoList(hDI);
   HANDLE myHandle = CreateFile(path, GENERIC_WRITE | GENERIC_READ, NULL, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+  
   if (myHandle == INVALID_HANDLE_VALUE) {
     //Error
     return -1;
   }
+  std::cout << "Handle created for the paht  " << path << std::endl;
+
   GetBLEGattServices(myHandle);
   GetBLECharacteristics(myHandle);
   GetBLEDescriptors(myHandle);
@@ -483,7 +507,9 @@ int main(int argc, char *argv[], char *envp[]) {
       exit = true;
     }
     else if (!memcmp("h", &command, sizeof(char))) {
+      printf("\n ****************************************************** \n");
       printf("\n Press e to exit. \n Press s to search for devices. \n Press h again to show this message. \n");
+      printf("\n ****************************************************** \n");
     }
     //we scan again to remove the enter
     scanf("%c", &command);
